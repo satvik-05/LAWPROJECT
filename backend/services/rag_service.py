@@ -129,7 +129,6 @@ class RAGService:
 		text_splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=150)
 		docs = text_splitter.create_documents(texts, metadatas=metadatas)
 		vs = Chroma.from_documents(docs, self.embeddings, persist_directory=VECTORSTORE_DIR)
-		vs.persist()
 		return vs
 
 	def _extract_facts(self, query: str) -> dict:
