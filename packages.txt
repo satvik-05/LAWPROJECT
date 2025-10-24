@@ -1,2 +1,0 @@
-# System packages required for the application
-# Hugging Face Spaces will install these automatically
