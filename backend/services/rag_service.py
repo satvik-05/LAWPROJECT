@@ -33,6 +33,10 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 GEMINI_EMBED_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "models/embedding-001")
 USE_GEMINI_LLM = os.getenv("USE_GEMINI_LLM", "").lower() in ("1", "true", "yes")
 
+# Disable Gemini by default if no explicit USE_GEMINI_LLM is set to avoid timeouts
+# Users must explicitly enable it with a valid API key
+DISABLE_GEMINI = os.getenv("DISABLE_GEMINI", "true").lower() in ("1", "true", "yes")
+
 
 def get_embeddings():
 	use_local = os.getenv("USE_LOCAL_EMBEDDINGS", "").lower() in ("1", "true", "yes")
@@ -52,15 +56,21 @@ class RAGService:
 		self.client = None if USE_LOCAL_LLM else (OpenAI() if os.getenv("OPENAI_API_KEY") else None)
 		self.gemini_chat = None
 		
-		# Only initialize Gemini if we have a valid API key and it's not a placeholder
-		if not USE_LOCAL_LLM and GEMINI_API_KEY and len(GEMINI_API_KEY) > 20:
+		# Only initialize Gemini if explicitly enabled and we have a valid API key
+		if not USE_LOCAL_LLM and not DISABLE_GEMINI and GEMINI_API_KEY and len(GEMINI_API_KEY) > 20:
 			if USE_GEMINI_LLM or not self.client:
 				try:
-					self.gemini_chat = ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0.2)
-					print(f"✅ [RAG] Gemini chat initialized with model: {GEMINI_MODEL}")
+					print(f"🔧 [RAG] Initializing Gemini with model: {GEMINI_MODEL}")
+					self.gemini_chat = ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0.2, max_retries=2)
+					print(f"✅ [RAG] Gemini chat initialized successfully")
 				except Exception as e:
 					print(f"⚠️ [RAG] Failed to initialize Gemini: {e}")
 					self.gemini_chat = None
+		else:
+			if DISABLE_GEMINI:
+				print("ℹ️ [RAG] Gemini is disabled (DISABLE_GEMINI=true), using fallback mode")
+			else:
+				print("ℹ️ [RAG] No LLM API keys configured, using fallback mode")
 		
 		self.embeddings = get_embeddings()
 		self.vectorstore = self._load_or_build_vectorstore()
