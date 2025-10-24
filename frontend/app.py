@@ -17,24 +17,36 @@ if IS_HF_SPACE:
     # On HF Spaces, backend runs on port 8000
     API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
     
-    # Start backend only once using session state
-    if 'backend_started' not in st.session_state:
+    # Start backend only once using a lock file
+    LOCK_FILE = "/tmp/backend_started.lock"
+    
+    if not os.path.exists(LOCK_FILE):
         try:
+            # Check if backend is already running
             requests.get(f"{API_BASE}/health", timeout=2)
             print("✅ Backend already running")
-            st.session_state.backend_started = True
+            open(LOCK_FILE, 'w').close()
         except:
-            # Backend not running, start it
-            print("🔧 Starting FastAPI backend...")
-            backend_process = subprocess.Popen([
-                "uvicorn", "backend.app.main:app",
-                "--host", "0.0.0.0",
-                "--port", "8000"
-            ])
-            # Wait for it to start
-            time.sleep(15)
-            print("✅ Backend started")
-            st.session_state.backend_started = True
+            # Backend not running, start it (only first process)
+            try:
+                # Create lock file atomically
+                fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(fd)
+                
+                print("🔧 Starting FastAPI backend...")
+                backend_process = subprocess.Popen([
+                    "uvicorn", "backend.app.main:app",
+                    "--host", "0.0.0.0",
+                    "--port", "8000"
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # Wait for it to start
+                time.sleep(20)
+                print("✅ Backend started")
+            except FileExistsError:
+                # Another process is already starting the backend
+                print("⏳ Waiting for backend to start...")
+                time.sleep(20)
 else:
     API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
