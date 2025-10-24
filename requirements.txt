@@ -1,0 +1,32 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-dotenv==1.0.1
+
+# LLM & RAG stack
+langchain==0.2.16
+langchain-community==0.2.16
+openai==1.51.0
+langchain-google-genai==1.0.6
+google-generativeai==0.5.2
+langchain-chroma>=0.1.0,<0.2.0
+llama-index==0.11.15
+chromadb==0.5.11
+faiss-cpu==1.8.0.post1
+
+# NLP
+spacy>=3.8.0,<4.0.0
+
+# Embeddings (local fallback)
+sentence-transformers==2.7.0
+
+# Data
+pandas==2.2.2
+numpy==1.26.4
+
+# Frontend
+streamlit==1.38.0
+gradio==4.44.0
+
+# CORS
+starlette==0.38.4
