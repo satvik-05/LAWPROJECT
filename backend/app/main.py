@@ -40,18 +40,23 @@ async def health():
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
+	logger.info(f"📨 [API] Received chat request: {req.message[:100]}...")
 	try:
+		logger.info("🔄 [API] Calling RAG service...")
 		reply, source_sections = rag_service.answer_query(req.message)
+		logger.info(f"✅ [API] RAG service returned response ({len(reply)} chars, {len(source_sections)} sections)")
 		return ChatResponse(reply=reply, source_sections=source_sections)
 	except Exception as e:
-		logger.exception("Chat generation failed: %s", e)
+		logger.exception(f"❌ [API] Chat generation failed: %s", e)
 		fallback = (
 			"I'm unable to generate a full explanation right now due to a local model error. "
 			"Here are likely relevant IPC sections based on retrieval."
 		)
 		try:
+			logger.info("🔄 [API] Attempting retrieval fallback...")
 			source_labels, _ = rag_service._retrieve_sections(req.message)
+			logger.info(f"✅ [API] Retrieval fallback returned {len(source_labels)} sections")
 			return ChatResponse(reply=fallback, source_sections=source_labels)
 		except Exception as inner:
-			logger.exception("Retrieval failed: %s", inner)
+			logger.exception(f"❌ [API] Retrieval failed: %s", inner)
 			return ChatResponse(reply=str(e), source_sections=[]) 

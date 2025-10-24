@@ -134,13 +134,22 @@ if ask_button:
     else:
         with st.spinner("🔄 Analyzing and retrieving relevant IPC sections..."):
             try:
+                print(f"📤 [Frontend] Sending request to backend: {user_input[:100]}...")
+                import time
+                start_time = time.time()
+                
                 resp = requests.post(
                     f"{API_BASE}/api/chat",
                     json={"message": user_input},
                     timeout=180  # Increased to 180 seconds (3 minutes)
                 )
+                
+                elapsed = time.time() - start_time
+                print(f"📥 [Frontend] Response received in {elapsed:.2f} seconds")
+                
                 resp.raise_for_status()
                 data = resp.json()
+                print(f"✅ [Frontend] Response parsed: {len(data.get('reply', ''))} chars, {len(data.get('source_sections', []))} sections")
                 
                 # Display response
                 st.success("✅ Analysis Complete")
@@ -155,14 +164,18 @@ if ask_button:
                             st.markdown(f"{idx}. {s}")
                             
             except requests.exceptions.Timeout:
+                print("⏱️ [Frontend] Request timed out after 180 seconds")
                 st.error("⏱️ Request timed out. Please try again.")
             except requests.exceptions.ConnectionError:
+                print("🔌 [Frontend] Connection error - backend not reachable")
                 st.error("🔌 Unable to connect to the backend service. Please try again in a moment.")
             except requests.exceptions.HTTPError as e:
+                print(f"❌ [Frontend] HTTP Error: {e.response.status_code}")
                 st.error(f"❌ HTTP Error: {e.response.status_code}")
                 if e.response.status_code == 500:
                     st.info("The server encountered an error. This might be due to API configuration. Please check the Space settings.")
             except Exception as e:
+                print(f"❌ [Frontend] Unexpected error: {type(e).__name__}: {str(e)}")
                 st.error(f"❌ An error occurred: {str(e)}")
 
 # Footer

@@ -255,12 +255,24 @@ class RAGService:
 			return data.get("response", str(data))
 
 	def answer_query(self, query: str) -> Tuple[str, List[str]]:
+		print(f"🔍 [RAG] Starting query processing: {query[:100]}...")
+		
+		print("📝 [RAG] Extracting facts...")
 		facts = self._extract_facts(query)
+		print(f"✅ [RAG] Facts extracted: {len(facts.get('entities', []))} entities, {len(facts.get('keywords', []))} keywords")
+		
+		print("🔎 [RAG] Retrieving IPC sections from vectorstore...")
 		source_labels, source_texts = self._retrieve_sections(query)
+		print(f"✅ [RAG] Retrieved {len(source_labels)} sections")
+		
+		print("📄 [RAG] Building prompt...")
 		prompt = self._build_prompt(query, facts, source_texts)
+		print(f"✅ [RAG] Prompt built ({len(prompt)} chars)")
+		
 		# Try OpenAI first if configured and Gemini not explicitly requested
 		if self.client and not USE_LOCAL_LLM and not USE_GEMINI_LLM:
 			try:
+				print("🤖 [RAG] Attempting OpenAI API call...")
 				completion = self.client.chat.completions.create(
 					model=CHAT_MODEL,
 					messages=[
@@ -271,14 +283,17 @@ class RAGService:
 					timeout=120,  # Increased to 120 seconds (2 minutes)
 				)
 				reply = completion.choices[0].message.content
+				print("✅ [RAG] OpenAI response received")
 				return reply, source_labels
 			except Exception as e:
 				# Log and continue to other fallbacks
-				print(f"OpenAI failed: {e}")
+				print(f"❌ [RAG] OpenAI failed: {type(e).__name__}: {str(e)[:200]}")
 				pass
+		
 		# Try Gemini if configured
 		if self.gemini_chat and not USE_LOCAL_LLM:
 			try:
+				print("🤖 [RAG] Attempting Gemini API call...")
 				# Use invoke with timeout handling
 				import asyncio
 				from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
@@ -290,20 +305,29 @@ class RAGService:
 				with ThreadPoolExecutor() as executor:
 					future = executor.submit(_gemini_call)
 					reply = future.result(timeout=120)  # Increased to 120 seconds (2 minutes)
+					print("✅ [RAG] Gemini response received")
 					return reply, source_labels
 			except FuturesTimeoutError:
-				print("Gemini request timed out")
+				print("⏱️ [RAG] Gemini request timed out after 120s")
 				pass
 			except Exception as e:
 				# Continue to other fallbacks
-				print(f"Gemini failed: {e}")
+				print(f"❌ [RAG] Gemini failed: {type(e).__name__}: {str(e)[:200]}")
 				pass
 		# Else try local LLM via Ollama
 		if USE_LOCAL_LLM:
 			try:
+				print("🤖 [RAG] Attempting Ollama local LLM call...")
 				reply = self._ollama_chat(prompt)
+				print("✅ [RAG] Ollama response received")
 				return reply, source_labels
-			except Exception:
+			except Exception as e:
+				print(f"❌ [RAG] Ollama failed: {type(e).__name__}: {str(e)[:200]}")
+				print("📋 [RAG] Using fallback explanation (no LLM)")
 				return self._fallback_explanation(query, facts, source_labels, source_texts), source_labels
+		
 		# Neither OpenAI nor local LLM configured - use fallback
-		return self._fallback_explanation(query, facts, source_labels, source_texts), source_labels
+		print("📋 [RAG] No LLM configured, using fallback explanation")
+		result = self._fallback_explanation(query, facts, source_labels, source_texts)
+		print(f"✅ [RAG] Query complete, returning {len(source_labels)} sections")
+		return result, source_labels
