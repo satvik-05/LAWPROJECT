@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import subprocess
 import time
 import atexit
+import sys
 
 load_dotenv()
 
@@ -16,9 +17,19 @@ if IS_HF_SPACE:
     # On HF Spaces, we need to use the internal URL
     API_BASE = os.getenv("API_BASE", "http://127.0.0.1:7860")
     
+    # Download spaCy model if not available
+    try:
+        import spacy
+        spacy.load("en_core_web_sm")
+    except:
+        print("📦 Downloading spaCy model...")
+        subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
+        print("✅ spaCy model downloaded")
+    
     # Start backend if not already running
     try:
         requests.get(f"{API_BASE}/health", timeout=2)
+        print("✅ Backend already running")
     except:
         # Backend not running, start it
         print("🔧 Starting FastAPI backend...")
@@ -28,7 +39,7 @@ if IS_HF_SPACE:
             "--port", "7860"
         ])
         # Wait for it to start
-        time.sleep(5)
+        time.sleep(10)
         print("✅ Backend started")
 else:
     API_BASE = os.getenv("API_BASE", "http://localhost:8000")
