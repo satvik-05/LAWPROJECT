@@ -51,8 +51,17 @@ class RAGService:
 	def __init__(self) -> None:
 		self.client = None if USE_LOCAL_LLM else (OpenAI() if os.getenv("OPENAI_API_KEY") else None)
 		self.gemini_chat = None
-		if not USE_LOCAL_LLM and GEMINI_API_KEY and (USE_GEMINI_LLM or not self.client):
-			self.gemini_chat = ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0.2)
+		
+		# Only initialize Gemini if we have a valid API key and it's not a placeholder
+		if not USE_LOCAL_LLM and GEMINI_API_KEY and len(GEMINI_API_KEY) > 20:
+			if USE_GEMINI_LLM or not self.client:
+				try:
+					self.gemini_chat = ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0.2)
+					print(f"✅ [RAG] Gemini chat initialized with model: {GEMINI_MODEL}")
+				except Exception as e:
+					print(f"⚠️ [RAG] Failed to initialize Gemini: {e}")
+					self.gemini_chat = None
+		
 		self.embeddings = get_embeddings()
 		self.vectorstore = self._load_or_build_vectorstore()
 		# Use MMR to diversify results and fetch a few more candidates
@@ -304,11 +313,11 @@ class RAGService:
 				
 				with ThreadPoolExecutor() as executor:
 					future = executor.submit(_gemini_call)
-					reply = future.result(timeout=120)  # Increased to 120 seconds (2 minutes)
+					reply = future.result(timeout=30)  # Reduced to 30 seconds to fail faster
 					print("✅ [RAG] Gemini response received")
 					return reply, source_labels
 			except FuturesTimeoutError:
-				print("⏱️ [RAG] Gemini request timed out after 120s")
+				print("⏱️ [RAG] Gemini request timed out after 30s")
 				pass
 			except Exception as e:
 				# Continue to other fallbacks
