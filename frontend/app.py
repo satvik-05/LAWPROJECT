@@ -137,7 +137,7 @@ if ask_button:
                 resp = requests.post(
                     f"{API_BASE}/api/chat",
                     json={"message": user_input},
-                    timeout=60
+                    timeout=180  # Increased to 180 seconds (3 minutes)
                 )
                 resp.raise_for_status()
                 data = resp.json()

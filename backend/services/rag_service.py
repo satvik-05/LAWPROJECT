@@ -268,7 +268,7 @@ class RAGService:
 						{"role": "user", "content": prompt},
 					],
 					temperature=0.2,
-					timeout=30,  # Add timeout
+					timeout=120,  # Increased to 120 seconds (2 minutes)
 				)
 				reply = completion.choices[0].message.content
 				return reply, source_labels
@@ -289,7 +289,7 @@ class RAGService:
 				
 				with ThreadPoolExecutor() as executor:
 					future = executor.submit(_gemini_call)
-					reply = future.result(timeout=30)  # 30 second timeout
+					reply = future.result(timeout=120)  # Increased to 120 seconds (2 minutes)
 					return reply, source_labels
 			except FuturesTimeoutError:
 				print("Gemini request timed out")
