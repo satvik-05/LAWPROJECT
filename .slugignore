@@ -1,0 +1,27 @@
+# Exclude these files/directories from HF Spaces build to save space
+.git/
+.gitignore
+.env
+.env.example
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.md
+!README.md
+scripts/
+deploy-to-hf.sh
+add-hf-secret.sh
+start-hf.sh
+test-local.sh
+setup.sh
+QUICK_START.md
+START_HERE.md
+DEPLOYMENT.md

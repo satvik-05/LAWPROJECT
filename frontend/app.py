@@ -14,33 +14,27 @@ load_dotenv()
 IS_HF_SPACE = os.getenv("SPACE_ID") is not None
 
 if IS_HF_SPACE:
-    # On HF Spaces, we need to use the internal URL
-    API_BASE = os.getenv("API_BASE", "http://127.0.0.1:7860")
+    # On HF Spaces, backend runs on port 8000
+    API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
     
-    # Download spaCy model if not available
-    try:
-        import spacy
-        spacy.load("en_core_web_sm")
-    except:
-        print("📦 Downloading spaCy model...")
-        subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
-        print("✅ spaCy model downloaded")
-    
-    # Start backend if not already running
-    try:
-        requests.get(f"{API_BASE}/health", timeout=2)
-        print("✅ Backend already running")
-    except:
-        # Backend not running, start it
-        print("🔧 Starting FastAPI backend...")
-        backend_process = subprocess.Popen([
-            "uvicorn", "backend.app.main:app",
-            "--host", "0.0.0.0",
-            "--port", "7860"
-        ])
-        # Wait for it to start
-        time.sleep(10)
-        print("✅ Backend started")
+    # Start backend only once using session state
+    if 'backend_started' not in st.session_state:
+        try:
+            requests.get(f"{API_BASE}/health", timeout=2)
+            print("✅ Backend already running")
+            st.session_state.backend_started = True
+        except:
+            # Backend not running, start it
+            print("🔧 Starting FastAPI backend...")
+            backend_process = subprocess.Popen([
+                "uvicorn", "backend.app.main:app",
+                "--host", "0.0.0.0",
+                "--port", "8000"
+            ])
+            # Wait for it to start
+            time.sleep(15)
+            print("✅ Backend started")
+            st.session_state.backend_started = True
 else:
     API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 

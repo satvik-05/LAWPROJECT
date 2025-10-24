@@ -8,6 +8,7 @@ sdk_version: 1.38.0
 app_file: frontend/app.py
 pinned: false
 license: mit
+startup_duration_timeout: 5m
 ---
 
 ## IPC Legal Assistant (Informational Chatbot)
