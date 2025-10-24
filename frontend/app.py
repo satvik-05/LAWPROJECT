@@ -33,6 +33,15 @@ if IS_HF_SPACE:
                 fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
                 os.close(fd)
                 
+                # Pre-initialize RAG service to build vectorstore
+                print("🔧 Pre-initializing RAG service...")
+                result = subprocess.run([sys.executable, "pre_init.py"], 
+                                      capture_output=True, text=True, timeout=180)
+                if result.returncode == 0:
+                    print(result.stdout)
+                else:
+                    print(f"⚠️ Pre-initialization failed: {result.stderr}")
+                
                 print("🔧 Starting FastAPI backend...")
                 backend_process = subprocess.Popen([
                     "uvicorn", "backend.app.main:app",
@@ -41,12 +50,16 @@ if IS_HF_SPACE:
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 
                 # Wait for it to start
-                time.sleep(20)
+                time.sleep(10)
                 print("✅ Backend started")
             except FileExistsError:
                 # Another process is already starting the backend
                 print("⏳ Waiting for backend to start...")
-                time.sleep(20)
+                time.sleep(25)
+            except subprocess.TimeoutExpired:
+                print("⚠️ Pre-initialization timed out, starting backend anyway...")
+            except Exception as e:
+                print(f"⚠️ Error during initialization: {e}")
 else:
     API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
