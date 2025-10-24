@@ -2,6 +2,9 @@ import os
 import streamlit as st
 import requests
 from dotenv import load_dotenv
+import subprocess
+import time
+import atexit
 
 load_dotenv()
 
@@ -12,6 +15,21 @@ IS_HF_SPACE = os.getenv("SPACE_ID") is not None
 if IS_HF_SPACE:
     # On HF Spaces, we need to use the internal URL
     API_BASE = os.getenv("API_BASE", "http://127.0.0.1:7860")
+    
+    # Start backend if not already running
+    try:
+        requests.get(f"{API_BASE}/health", timeout=2)
+    except:
+        # Backend not running, start it
+        print("🔧 Starting FastAPI backend...")
+        backend_process = subprocess.Popen([
+            "uvicorn", "backend.app.main:app",
+            "--host", "0.0.0.0",
+            "--port", "7860"
+        ])
+        # Wait for it to start
+        time.sleep(5)
+        print("✅ Backend started")
 else:
     API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
