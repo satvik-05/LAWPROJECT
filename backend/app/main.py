@@ -25,11 +25,18 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ipc-assistant")
 
+# Initialize RAG service at module level
+logger.info("Initializing RAG service...")
 rag_service = RAGService()
+logger.info("RAG service ready!")
+
+@app.on_event("startup")
+async def startup_event():
+	logger.info("Backend startup complete - ready to serve requests")
 
 @app.get("/health")
 async def health():
-	return {"status": "ok"}
+	return {"status": "ok", "rag_initialized": rag_service is not None}
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):

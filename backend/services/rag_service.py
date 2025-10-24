@@ -268,20 +268,35 @@ class RAGService:
 						{"role": "user", "content": prompt},
 					],
 					temperature=0.2,
+					timeout=30,  # Add timeout
 				)
 				reply = completion.choices[0].message.content
 				return reply, source_labels
-			except Exception:
-				# Continue to other fallbacks
+			except Exception as e:
+				# Log and continue to other fallbacks
+				print(f"OpenAI failed: {e}")
 				pass
 		# Try Gemini if configured
 		if self.gemini_chat and not USE_LOCAL_LLM:
 			try:
-				result = self.gemini_chat.invoke(prompt)
-				reply = getattr(result, "content", str(result))
-				return reply, source_labels
-			except Exception:
+				# Use invoke with timeout handling
+				import asyncio
+				from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+				
+				def _gemini_call():
+					result = self.gemini_chat.invoke(prompt)
+					return getattr(result, "content", str(result))
+				
+				with ThreadPoolExecutor() as executor:
+					future = executor.submit(_gemini_call)
+					reply = future.result(timeout=30)  # 30 second timeout
+					return reply, source_labels
+			except FuturesTimeoutError:
+				print("Gemini request timed out")
+				pass
+			except Exception as e:
 				# Continue to other fallbacks
+				print(f"Gemini failed: {e}")
 				pass
 		# Else try local LLM via Ollama
 		if USE_LOCAL_LLM:
@@ -290,5 +305,5 @@ class RAGService:
 				return reply, source_labels
 			except Exception:
 				return self._fallback_explanation(query, facts, source_labels, source_texts), source_labels
-		# Neither OpenAI nor local LLM configured
+		# Neither OpenAI nor local LLM configured - use fallback
 		return self._fallback_explanation(query, facts, source_labels, source_texts), source_labels
