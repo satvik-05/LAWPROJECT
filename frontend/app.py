@@ -47,10 +47,23 @@ if IS_HF_SPACE:
                     "uvicorn", "backend.app.main:app",
                     "--host", "0.0.0.0",
                     "--port", "8000"
-                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                ])  # Removed stdout/stderr suppression to see backend logs
                 
-                # Wait for it to start
-                time.sleep(10)
+                # Wait for backend to be ready with health checks
+                print("⏳ Waiting for backend to become ready...")
+                max_attempts = 30
+                for attempt in range(max_attempts):
+                    try:
+                        health_check = requests.get(f"{API_BASE}/health", timeout=2)
+                        if health_check.status_code == 200:
+                            print(f"✅ Backend ready after {attempt + 1} attempts ({(attempt + 1) * 2}s)")
+                            break
+                    except:
+                        if attempt < max_attempts - 1:
+                            time.sleep(2)
+                        else:
+                            print("⚠️ Backend health check failed after 60s, but continuing...")
+                
                 print("✅ Backend started")
             except FileExistsError:
                 # Another process is already starting the backend
@@ -132,6 +145,16 @@ if ask_button:
     if not user_input.strip():
         st.warning("⚠️ Please describe your situation before asking.")
     else:
+        # First verify backend is reachable
+        try:
+            print(f"🔍 [Frontend] Checking backend health at {API_BASE}/health...")
+            health_resp = requests.get(f"{API_BASE}/health", timeout=5)
+            print(f"✅ [Frontend] Backend is healthy: {health_resp.json()}")
+        except Exception as e:
+            print(f"❌ [Frontend] Backend health check failed: {e}")
+            st.error(f"🔌 Backend is not responding. Error: {str(e)}")
+            st.stop()
+        
         with st.spinner("🔄 Analyzing and retrieving relevant IPC sections..."):
             try:
                 print(f"📤 [Frontend] Sending request to backend: {user_input[:100]}...")
